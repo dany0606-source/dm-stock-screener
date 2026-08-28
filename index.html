@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DM Stock Screener — Crosscheck</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap');
+:root{--paper:#F3F5F4;--card:#FFF;--ink:#13241F;--muted:#5D6E68;--line:#DBE3DF;
+--verify:#0E7B4F;--verifyBg:#E6F2EB;--flag:#94570A;--flagBg:#FBEFDA;--bear:#A93226;--bearBg:#F8E9E7;--neutralBg:#EBEEEC}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;font-size:15px;line-height:1.55}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px 64px}
+.head{display:flex;align-items:baseline;justify-content:space-between;padding:22px 0 18px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px}
+.mark{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:20px;letter-spacing:.14em}
+.mark .tick{color:var(--verify)}
+.head small{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+.search{display:flex;gap:10px;margin:30px 0 4px}
+.input{flex:1;font-family:'IBM Plex Mono',monospace;font-size:19px;letter-spacing:.05em;text-transform:uppercase;
+padding:14px 18px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);outline:none;min-width:0}
+.input:focus{border-color:var(--ink)}
+.btn{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;letter-spacing:.08em;font-size:15px;
+padding:14px 26px;border:none;border-radius:10px;background:var(--ink);color:#fff;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line);font-size:12px;padding:8px 14px}
+.btn:focus-visible,.input:focus-visible,.tf:focus-visible{outline:2px solid var(--verify);outline-offset:2px}
+.hint{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);margin-bottom:8px}
+.quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.hero{padding:42px 0 24px}
+.hero h1{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:clamp(28px,5vw,44px);line-height:1.08;max-width:640px}
+.hero h1 em{font-style:normal;color:var(--verify)}
+.hero p{margin-top:12px;max-width:600px;color:var(--muted)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.step b{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+.step span{font-size:13.5px}
+@media(max-width:640px){.steps{grid-template-columns:1fr}}
+.prog{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;
+padding:13px 16px;font-family:'IBM Plex Mono',monospace;font-size:13px;margin-top:30px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--flag);animation:pulse 1s infinite alternate;flex:none}
+@keyframes pulse{from{transform:scale(.8)}to{transform:scale(1.25)}}
+@media(prefers-reduced-motion:reduce){.dot{animation:none}}
+.audit{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:26px 0 16px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+.pill{padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.pill.ok{background:var(--verifyBg);border-color:#BFDCCB;color:var(--verify)}
+.pill.bad{background:var(--flagBg);border-color:#E7CD9E;color:var(--flag)}
+.spacer{flex:1}
+.grid{display:grid;grid-template-columns:300px 1fr;gap:14px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.verdict{font-family:'IBM Plex Sans Condensed',sans-serif;font-weight:700;font-size:40px;line-height:1}
+.company{margin-top:6px;font-size:13.5px;color:var(--muted)}
+.price{margin-top:16px;font-family:'IBM Plex Mono',monospace;font-size:15px}
+.conf{margin-top:18px}
+.meter{display:flex;gap:3px;margin-top:8px}
+.seg{height:10px;flex:1;border-radius:2px;background:var(--neutralBg)}
+.seg.on{background:var(--ink)}
+.confnote{margin-top:8px;font-size:12.5px;color:var(--flag)}
+.case p{font-size:14.5px}
+.case+.case{margin-top:14px}
+.inv{border-left:3px solid var(--flag);padding-left:12px;margin-top:14px}
+.numchip{font-family:'IBM Plex Mono',monospace;font-size:.93em;border-radius:5px;padding:1px 5px;white-space:nowrap}
+.numchip.ok{background:var(--verifyBg);color:#0B5C3C;box-shadow:inset 0 -1.5px 0 var(--verify)}
+.numchip.bad{background:var(--flagBg);color:var(--flag);box-shadow:inset 0 -1.5px 0 var(--flag)}
+.numchip.bad::after{content:" unverified";font-size:9px;letter-spacing:.06em;text-transform:uppercase;vertical-align:super}
+.tfs{display:flex;flex-wrap:wrap;gap:6px}
+.tf{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.08em;padding:6px 13px;border-radius:999px;
+border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer}
+.tf.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.chartmeta{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;margin:14px 0 6px;font-family:'IBM Plex Mono',monospace;font-size:13px}
+.chg.up{color:var(--verify)}.chg.down{color:var(--bear)}
+.hoverinfo{color:var(--muted);font-size:12px}
+#chart svg{width:100%;height:auto;display:block;margin-top:6px}
+.chartnote{margin-top:10px;font-size:12px;color:var(--muted)}
+.skel{height:280px;border-radius:10px;margin-top:14px;background:linear-gradient(90deg,var(--neutralBg) 25%,#F2F4F3 50%,var(--neutralBg) 75%);
+background-size:200% 100%;animation:sheen 1.2s infinite linear}
+@keyframes sheen{from{background-position:200% 0}to{background-position:-200% 0}}
+@media(prefers-reduced-motion:reduce){.skel{animation:none}}
+.tech{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:14px}
+.kv{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tech .kv{background:var(--verifyBg);border-color:#BFDCCB}
+.kv b{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.kv span{font-family:'IBM Plex Mono',monospace;font-size:14px}
+.technote{margin-top:8px;font-size:11.5px;color:var(--verify);font-family:'IBM Plex Mono',monospace}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.mono{font-family:'IBM Plex Mono',monospace}
+.status{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.status.ok{background:var(--verifyBg);color:var(--verify)}
+.status.bad{background:var(--flagBg);color:var(--flag)}
+.status.neutral{background:var(--neutralBg);color:var(--muted)}
+.tablewrap{overflow-x:auto}
+.snap{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+.mt{margin-top:14px}
+.err{margin-top:26px;background:var(--bearBg);border:1px solid #E4B7B1;border-radius:12px;padding:16px 18px;font-size:14px}
+.foot{margin-top:34px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.method h3{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--verify);margin:20px 0 6px}
+.method p{max-width:640px;font-size:14.5px}
+.method .lim{color:var(--flag)}
+.hidden{display:none}
+.recbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.hit{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--verifyBg);color:var(--verify)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="head">
+    <div class="mark">CROSSCHECK<span class="tick">✓</span></div>
+    <small>DM STOCK SCREENER · AI EQUITY DESK · EVERY FIGURE AUDITED</small>
+  </header>
+
+  <div class="search">
+    <input id="ticker" class="input" placeholder="ENTER ANY TICKER — AAPL, TSLA, NVDA…" aria-label="Stock ticker">
+    <button id="go" class="btn">ANALYSE</button>
+  </div>
+  <div class="hint">any listed stock · analysis takes ~20-40 seconds · every figure is audited before display</div>
+  <div class="quick">
+    <button class="btn ghost" onclick="toggleMethod()">HOW THE AUDIT WORKS</button>
+  </div>
+
+  <section class="hero" id="hero">
+    <h1>Every number, <em>checked against the tape</em> before you see it.</h1>
+    <p>Enter any ticker. Crosscheck pulls live market data, has an AI build the verdict, bull and bear case — then a code-level audit reconciles every figure in the AI's own writing against the source data. Anything that doesn't match is flagged as unverified and docks the confidence score.</p>
+    <div class="steps">
+      <div class="step"><b>01 · PULL</b><span>Live price, valuation, growth, peers and news gathered from current web sources, cross-checked between them.</span></div>
+      <div class="step"><b>02 · ANALYSE</b><span>The AI writes a verdict, bull case, bear case, catalyst — and what would prove it wrong — using only the pulled data.</span></div>
+      <div class="step"><b>03 · AUDIT</b><span>Code (not the AI) reconciles every figure and chart candle against the source. Mismatches are flagged.</span></div>
+    </div>
+  </section>
+
+  <div id="method" class="card method mt hidden">
+    <div class="eyebrow">Methodology</div>
+    <h3>1 · Prose figures</h3>
+    <p>Market data is pulled from live public sources with cross-source checks — unconfirmed figures come back null rather than guessed. The AI writes its analysis constrained to that data only. Code then extracts every figure from the AI's writing and reconciles it against the source with a 3% tolerance for rounding. Mismatches are flagged unverified, and each flag docks a point off the AI's stated confidence.</p>
+    <h3>2 · Chart candles</h3>
+    <p>Candles are checked for internal consistency, must fall inside the 52-week range for sub-year views, and the latest close must reconcile with the live price. Failures are marked ⚑.</p>
+    <h3>3 · Technicals by construction</h3>
+    <p>Return, volatility, drawdown and trend are computed in page code from the audited candles — the AI never touches them.</p>
+    <h3>4 · The AI's own judgement</h3>
+    <p>Every verdict is logged in your browser with the price at the time of the call; re-checking performance marks each call right or wrong. Each analysis also states what would prove it wrong.</p>
+    <h3 class="lim">Known limits</h3>
+    <p>Prices come from web sources, not an exchange feed, so figures can lag and candles are indicative rather than tick-accurate — which is exactly why the audits exist. Verification confirms consistency with pulled sources, not absolute truth. Nothing here is investment advice.</p>
+  </div>
+
+  <div id="prog" class="prog hidden"><span class="dot"></span><b id="progText">working…</b></div>
+  <div id="errBox" class="err hidden"></div>
+
+  <div id="results" class="hidden">
+    <div class="audit">
+      <span>AUDIT RESULT</span>
+      <span class="pill" id="pillTotal"></span>
+      <span class="pill ok" id="pillOk"></span>
+      <span class="pill" id="pillBad"></span>
+      <span class="spacer"></span>
+      <button class="btn ghost" onclick="downloadReport()">DOWNLOAD ONE-PAGER</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="eyebrow" id="verdictLabel">Verdict</div>
+        <div class="verdict" id="verdict"></div>
+        <div class="company" id="company"></div>
+        <div class="price" id="priceLine"></div>
+        <div class="conf">
+          <div class="eyebrow" style="margin-bottom:0">Confidence</div>
+          <div class="meter" id="meter"></div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;margin-top:6px" id="confText"></div>
+          <div class="confnote" id="confNote"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="case"><div class="eyebrow" style="color:var(--verify)">Bull case</div><p id="bull"></p></div>
+        <div class="case"><div class="eyebrow" style="color:var(--bear)">Bear case</div><p id="bear"></p></div>
+        <div class="case"><div class="eyebrow">Key catalyst</div><p id="cat"></p></div>
+        <div class="case inv"><div class="eyebrow" style="color:var(--flag)">What would change this view</div><p id="inv"></p></div>
+      </div>
+    </div>
+
+    <div class="card mt">
+      <div class="eyebrow" id="chartLabel">Price action</div>
+      <div class="tfs" id="tfs"></div>
+      <div id="chartSkel" class="skel hidden" aria-label="Loading chart"></div>
+      <div id="chartErr" class="err hidden" style="margin-top:12px;font-size:13px;padding:12px 14px"></div>
+      <div id="chartBody" class="hidden">
+        <div class="chartmeta">
+          <span id="chg" class="chg"></span>
+          <span class="hoverinfo" id="hoverinfo">hover or tap a candle for OHLC</span>
+        </div>
+        <div id="chart"></div>
+        <div class="chartnote" id="chartNote"></div>
+        <div class="tech" id="tech"></div>
+        <div class="technote">✓ Computed in-page from the audited candles — not AI-generated, verified by construction.</div>
+      </div>
+    </div>
+
+    <div class="card mt">
+      <div class="eyebrow">Verification ledger</div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Figure stated by AI</th><th>Matched source field</th><th>Source value</th><th>Status</th></tr></thead>
+        <tbody id="ledger"></tbody>
+      </table></div>
+    </div>
+
+    <div class="card mt">
+      <div class="eyebrow">Source data snapshot</div>
+      <div class="snap" id="snap"></div>
+      <p style="margin-top:12px;font-size:13px;font-family:'IBM Plex Mono',monospace" id="peers"></p>
+      <p style="margin-top:12px;font-size:12.5px;color:var(--muted)" id="sources"></p>
+    </div>
+  </div>
+
+  <div class="card mt" id="record">
+    <div class="recbar">
+      <div class="eyebrow" style="margin-bottom:0">Verdict track record</div>
+      <span class="spacer"></span>
+      <span class="hit hidden" id="hitRate"></span>
+      <button class="btn ghost" id="recheckBtn" onclick="recheck()">RE-CHECK PERFORMANCE</button>
+      <button class="btn ghost" onclick="clearCalls()">CLEAR</button>
+    </div>
+    <p id="recEmpty" style="font-size:13.5px;color:var(--muted)">Every verdict run on this device is logged here with the price at the time of the call. Come back later and re-check performance to see whether the AI's direction was right — the tool audits its own judgement, not just its numbers.</p>
+    <div class="tablewrap"><table id="recTable" class="hidden">
+      <thead><tr><th>Date</th><th>Ticker</th><th>Verdict</th><th class="mono">Price at call</th><th class="mono">Now</th><th class="mono">Return</th><th>Direction</th></tr></thead>
+      <tbody id="recBody"></tbody>
+    </table></div>
+  </div>
+
+  <footer class="foot">
+    Crosscheck / DM Stock Screener — built by Danyal Malik using the Anthropic Claude API. Figures marked unverified could not be reconciled against the pulled source data; chart candles are reconstructed from public price history rather than an exchange feed. Track-record history is stored only in your browser. Nothing here is investment advice.
+  </footer>
+</div>
+
+<script>
+/* ── verification engine ── */
+const NUM_RE=/\$?\d[\d,]*(?:\.\d+)?\s*(?:trillion|billion|million|%|T|B|M)?(?=[\s.,;:)"']|$)/g;
+function parseFigure(s){s=s.trim();const isPercent=/%$/.test(s),isDollar=/^\$/.test(s);let mult=1;
+if(/trillion/i.test(s)||/T$/.test(s))mult=1e12;if(/billion/i.test(s)||/B$/.test(s))mult=1e9;if(/million/i.test(s)||/M$/.test(s))mult=1e6;
+const core=parseFloat(s.replace(/[$,%]/g,"").replace(/[^\d.]/g," "));if(isNaN(core))return null;
+return{value:core*mult,isPercent,isDollar};}
+function skip(f,raw){if(!f)return true;const v=f.value;
+if(!f.isPercent&&!f.isDollar&&Number.isInteger(v)&&v>=1900&&v<=2040&&!/,/.test(raw))return true;
+if(!f.isPercent&&!f.isDollar&&Number.isInteger(v)&&v<=12&&v===parseFloat(raw))return true;return false;}
+function collect(o,out,path){out=out||[];path=path||"";if(o==null)return out;
+if(typeof o==="number"&&isFinite(o))out.push({value:o,field:path});
+else if(Array.isArray(o))o.forEach((v,i)=>collect(v,out,path+"["+i+"]"));
+else if(typeof o==="object")for(const k of Object.keys(o))collect(o[k],out,path?path+"."+k:k);
+return out;}
+function close(a,b,p){if(b===0)return Math.abs(a)<1e-9;if(p&&Math.abs(a-b)<=0.6)return true;return Math.abs(a-b)/Math.abs(b)<=0.03;}
+function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;");}
+function fmt(v){if(v==null)return"—";const a=Math.abs(v);
+if(a>=1e12)return(v/1e12).toFixed(2)+"T";if(a>=1e9)return(v/1e9).toFixed(2)+"B";if(a>=1e6)return(v/1e6).toFixed(1)+"M";
+return String(Math.round(v*100)/100);}
+function verify(text,dvs){text=text||"";const claims=[];let html="",last=0,m;const re=new RegExp(NUM_RE.source,"g");
+while((m=re.exec(text))!==null){const raw=m[0],f=parseFigure(raw);if(skip(f,raw))continue;
+html+=esc(text.slice(last,m.index));let match=null;
+for(const dv of dvs){if(close(f.value,dv.value,f.isPercent)){match=dv;break;}}
+const ok=!!match;claims.push({raw,field:match?match.field:null,source:match?match.value:null,ok});
+html+='<span class="numchip '+(ok?"ok":"bad")+'">'+(ok?"✓ ":"")+esc(raw)+'</span>';
+last=m.index+raw.length;}
+html+=esc(text.slice(last));return{html,claims};}
+
+/* ── app state ── */
+const TFKEYS=["1D","1W","1M","3M","6M","1Y","ALL"];
+let cur=null; /* {ticker,data,analysis,claims,flagged,adjusted} */
+let curTf="1M";
+const chartCache={};
+
+const $=id=>document.getElementById(id);
+function show(id,on){$(id).classList.toggle("hidden",!on);}
+
+/* ── main run ── */
+async function run(){
+const t=$("ticker").value.toUpperCase().trim().split(/[\s,]+/)[0];
+if(!/^[A-Z.\-]{1,8}$/.test(t)){$("errBox").textContent="Enter a valid ticker like AAPL.";show("errBox",true);return;}
+show("hero",false);show("errBox",false);show("results",false);show("prog",true);
+$("go").disabled=true;$("progText").textContent=t+" · pulling live data & running analysis…";
+Object.keys(chartCache).forEach(k=>delete chartCache[k]);
+try{
+const r=await fetch("/api/analyze?ticker="+encodeURIComponent(t));
+const j=await r.json();
+if(!r.ok)throw new Error(j.error||"Analysis failed");
+render(t,j.data,j.analysis);
+logCall(t,cur.analysis.verdict,cur.adjusted,j.data.priceUSD);
+loadChart("1M");
+}catch(e){
+$("errBox").innerHTML="<b>Analysis failed.</b> "+esc(e.message)+" — try again or try a different ticker.";
+show("errBox",true);show("hero",true);
+}finally{show("prog",false);$("go").disabled=false;}
+}
+
+function render(t,D,A){
+const dvs=collect(D);
+const B=verify(A.bullCase,dvs),R=verify(A.bearCase,dvs),C=verify(A.catalyst,dvs),I=verify(A.invalidation,dvs);
+const claims=[...B.claims,...R.claims,...C.claims,...I.claims];
+const flagged=claims.filter(c=>!c.ok).length;
+const stated=Math.min(10,Math.max(1,Math.round(A.confidence||5)));
+const adjusted=Math.max(1,stated-flagged);
+cur={ticker:t,data:D,analysis:A,claims,flagged,stated,adjusted};
+$("verdictLabel").textContent="Verdict — "+t;
+$("chartLabel").textContent="Price action — "+t;
+const v=$("verdict");v.textContent=(A.verdict||"Neutral").toUpperCase();
+v.style.color=A.verdict==="Bullish"?"var(--verify)":A.verdict==="Bearish"?"var(--bear)":"var(--muted)";
+$("company").textContent=D.company||"";
+$("priceLine").textContent=(D.priceUSD!=null?"$"+D.priceUSD:"price n/a")+
+(D.changePctToday!=null?"  ·  "+(D.changePctToday>0?"+":"")+D.changePctToday+"% today":"")+
+(D.priceAsOf?"  ·  as of "+D.priceAsOf:"");
+$("bull").innerHTML=B.html;$("bear").innerHTML=R.html;$("cat").innerHTML=C.html;$("inv").innerHTML=I.html;
+$("pillTotal").textContent=claims.length+" figures checked";
+$("pillOk").textContent=(claims.length-flagged)+" verified";
+const pb=$("pillBad");pb.textContent=flagged>0?flagged+" flagged unverified":"0 flags";
+pb.className="pill "+(flagged>0?"bad":"ok");
+$("confText").textContent=adjusted+"/10";
+$("confNote").textContent=flagged>0?"AI stated "+stated+"/10 — reduced to "+adjusted+"/10 after "+flagged+" figure"+(flagged>1?"s":"")+" failed the audit.":"";
+const meter=$("meter");meter.innerHTML="";
+for(let i=0;i<10;i++){const s=document.createElement("span");s.className="seg"+(i<adjusted?" on":"");meter.appendChild(s);}
+const ledger=$("ledger");ledger.innerHTML="";
+claims.forEach(c=>{const tr=document.createElement("tr");
+tr.innerHTML='<td class="mono">'+esc(c.raw)+'</td><td class="mono">'+esc(c.field||"no match in source data")+
+'</td><td class="mono">'+(c.source!=null?fmt(c.source):"—")+'</td><td><span class="status '+(c.ok?"ok":"bad")+'">'+(c.ok?"VERIFIED":"UNVERIFIED")+"</span></td>";
+ledger.appendChild(tr);});
+const snap=$("snap");snap.innerHTML="";
+[["Price",D.priceUSD!=null?"$"+D.priceUSD:"—"],["Market cap",D.marketCapUSD!=null?"$"+fmt(D.marketCapUSD):"—"],
+["P/E",D.peRatio??"—"],["EPS (TTM)",D.epsTTM??"—"],
+["Rev growth",D.revenueGrowthPct!=null?D.revenueGrowthPct+"%":"—"],["Div yield",D.dividendYieldPct!=null?D.dividendYieldPct+"%":"—"],
+["52w high",D.week52HighUSD!=null?"$"+D.week52HighUSD:"—"],["52w low",D.week52LowUSD!=null?"$"+D.week52LowUSD:"—"]]
+.forEach(([k,val])=>{const d=document.createElement("div");d.className="kv";d.innerHTML="<b>"+k+"</b><span>"+val+"</span>";snap.appendChild(d);});
+const peers=(D.peers||[]).filter(p=>p&&p.ticker);
+$("peers").textContent=peers.length?"Peers: "+peers.map(p=>p.ticker+(p.peRatio!=null?" P/E "+p.peRatio:"")+(p.revenueGrowthPct!=null?" · rev "+p.revenueGrowthPct+"%":"")).join("  |  "):"";
+const srcs=(D.sources||[]).filter(Boolean);
+$("sources").textContent=srcs.length?"Sources: "+srcs.join(" · "):"";
+show("results",true);
+}
+
+/* ── chart ── */
+function auditCandles(cs,D,tf){const notes=[];let flagged=0;
+const clean=cs.filter(c=>[c.o,c.h,c.l,c.c].every(v=>typeof v==="number"&&isFinite(v)&&v>0));
+clean.forEach(c=>{c.bad=false;
+if(c.h<Math.max(c.o,c.c)||c.l>Math.min(c.o,c.c))c.bad=true;
+const w=["1D","1W","1M","3M","6M","1Y"].includes(tf);
+if(w&&D.week52HighUSD!=null&&c.h>D.week52HighUSD*1.1)c.bad=true;
+if(w&&D.week52LowUSD!=null&&c.l<D.week52LowUSD*0.9)c.bad=true;
+if(c.bad)flagged++;});
+if(flagged>0)notes.push(flagged+" candle"+(flagged>1?"s":"")+" failed internal/52-week range checks");
+if(D.priceUSD!=null&&clean.length&&["1D","1W","1M"].includes(tf)){
+const lastC=clean[clean.length-1].c,drift=Math.abs(lastC-D.priceUSD)/D.priceUSD;
+notes.push(drift>0.05?"latest close differs from live price by "+(drift*100).toFixed(1)+"%":"latest close reconciles with live price ✓");}
+return{candles:clean,notes};}
+
+async function loadChart(tf){
+curTf=tf;
+document.querySelectorAll(".tf").forEach(x=>x.classList.toggle("on",x.textContent===tf));
+$("hoverinfo").textContent="hover or tap a candle for OHLC";
+show("chartErr",false);
+if(chartCache[tf]){show("chartSkel",false);show("chartBody",true);drawChart();return;}
+show("chartBody",false);show("chartSkel",true);
+try{
+const r=await fetch("/api/chart?ticker="+encodeURIComponent(cur.ticker)+"&tf="+tf);
+const j=await r.json();
+if(!r.ok)throw new Error(j.error||"Chart failed");
+const a=auditCandles(Array.isArray(j.candles)?j.candles:[],cur.data,tf);
+if(!a.candles.length)throw new Error("No usable price history for this range.");
+chartCache[tf]={...a,approx:j.approx!==false,note:j.note||"",asOf:j.asOf||""};
+show("chartSkel",false);show("chartBody",true);drawChart();
+}catch(e){
+show("chartSkel",false);
+$("chartErr").innerHTML="<b>Chart unavailable.</b> "+esc(e.message)+" — tap the tab again to retry.";
+show("chartErr",true);}
+}
+
+function drawChart(){const ch=chartCache[curTf];const cs=ch.candles;const D=cur.data;
+const W=720,H=300,pL=52,pR=10,pT=12,pB=26,n=cs.length;
+const lo=Math.min(...cs.map(c=>c.l)),hi=Math.max(...cs.map(c=>c.h)),span=(hi-lo)||1;
+const y=v=>pT+(1-(v-lo)/span)*(H-pT-pB);const slot=(W-pL-pR)/n;const bw=Math.max(3,Math.min(18,slot*0.6));
+const le=Math.max(1,Math.ceil(n/8));
+let s='<svg viewBox="0 0 '+W+" "+H+'" role="img" aria-label="Candlestick chart">';
+[lo,lo+span*.25,lo+span*.5,lo+span*.75,hi].forEach(tv=>{
+s+='<line x1="'+pL+'" x2="'+(W-pR)+'" y1="'+y(tv)+'" y2="'+y(tv)+'" stroke="#DBE3DF"/>';
+s+='<text x="'+(pL-8)+'" y="'+(y(tv)+4)+'" text-anchor="end" font-size="10.5" fill="#5D6E68" font-family="IBM Plex Mono,monospace">'+(tv>=1000?Math.round(tv):tv.toFixed(tv<10?2:1))+"</text>";});
+cs.forEach((c,i)=>{const cx=pL+slot*i+slot/2,up=c.c>=c.o,col=c.bad?"#94570A":up?"#0E7B4F":"#A93226";
+const top=y(Math.max(c.o,c.c)),bot=y(Math.min(c.o,c.c));
+s+='<g data-i="'+i+'" style="cursor:pointer">';
+s+='<rect x="'+(cx-slot/2)+'" y="'+pT+'" width="'+slot+'" height="'+(H-pT-pB)+'" fill="transparent"/>';
+s+='<line x1="'+cx+'" x2="'+cx+'" y1="'+y(c.h)+'" y2="'+y(c.l)+'" stroke="'+col+'" stroke-width="1.4"/>';
+s+='<rect x="'+(cx-bw/2)+'" y="'+top+'" width="'+bw+'" height="'+Math.max(1.5,bot-top)+'" fill="'+(up?col:"#fff")+'" stroke="'+col+'" stroke-width="1.4" rx="1"/>';
+if(c.bad)s+='<text x="'+cx+'" y="'+(y(c.h)-4)+'" text-anchor="middle" font-size="10" fill="#94570A">⚑</text>';
+if(i%le===0)s+='<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle" font-size="10.5" fill="#5D6E68" font-family="IBM Plex Mono,monospace">'+esc(c.t)+"</text>";
+s+="</g>";});
+s+="</svg>";
+$("chart").innerHTML=s;
+document.querySelectorAll("#chart g[data-i]").forEach(g=>{
+const showC=()=>{const c=cs[+g.dataset.i];
+$("hoverinfo").textContent=c.t+" · O "+c.o+" · H "+c.h+" · L "+c.l+" · C "+c.c+(c.bad?" · ⚑ flagged":"");};
+g.addEventListener("mouseenter",showC);g.addEventListener("click",showC);});
+const chg=((cs[cs.length-1].c-cs[0].o)/cs[0].o)*100;
+$("chg").textContent=(chg>=0?"▲ +":"▼ ")+chg.toFixed(1)+"% over "+curTf;
+$("chg").className="chg "+(chg>=0?"up":"down");
+$("chartNote").textContent=(ch.approx?"Approximate series reconstructed from public price history — indicative, not tick-accurate. ":"")+
+(ch.note?ch.note+" ":"")+(ch.asOf?"As of "+ch.asOf+". ":"")+(ch.notes.length?"Chart audit: "+ch.notes.join(" · ")+".":"");
+const closes=cs.map(c=>c.c);const rets=[];
+for(let i=1;i<closes.length;i++)rets.push(Math.log(closes[i]/closes[i-1]));
+const mean=rets.length?rets.reduce((a,b)=>a+b,0)/rets.length:0;
+const vol=rets.length?Math.sqrt(rets.reduce((a,b)=>a+(b-mean)*(b-mean),0)/rets.length)*100:0;
+let peak=closes[0],dd=0;for(const c of closes){peak=Math.max(peak,c);dd=Math.min(dd,(c-peak)/peak);}
+const sma=closes.reduce((a,b)=>a+b,0)/closes.length;const lc=closes[closes.length-1];
+const trend=lc>sma*1.005?"Above avg (uptrend)":lc<sma*0.995?"Below avg (downtrend)":"At average";
+const t=$("tech");t.innerHTML="";
+const rows=[["Return ("+curTf+")",(chg>=0?"+":"")+chg.toFixed(1)+"%"],["Volatility σ/candle",vol.toFixed(2)+"%"],["Max drawdown",(dd*100).toFixed(1)+"%"]];
+if(cur.data.week52HighUSD!=null&&cur.data.priceUSD!=null)
+rows.push(["vs 52w high",(((cur.data.priceUSD-cur.data.week52HighUSD)/cur.data.week52HighUSD)*100).toFixed(1)+"%"]);
+rows.push(["Trend vs avg",trend]);
+rows.forEach(([k,v])=>{const d=document.createElement("div");d.className="kv";d.innerHTML="<b>"+k+"</b><span style='font-size:12.5px'>"+v+"</span>";t.appendChild(d);});
+}
+
+/* ── track record (localStorage) ── */
+function getCalls(){try{return JSON.parse(localStorage.getItem("cx-calls")||"[]");}catch(e){return[];}}
+function setCalls(c){try{localStorage.setItem("cx-calls",JSON.stringify(c.slice(-40)));}catch(e){}}
+let perf={};
+function logCall(t,verdict,confidence,price){
+const date=new Date().toISOString().slice(0,10),id=t+"-"+date;
+const calls=[...getCalls().filter(c=>c.id!==id),{id,date,ticker:t,verdict,confidence,price}];
+setCalls(calls);renderRecord();}
+function hitStatus(v,ret){if(ret==null)return{label:"—",cls:"neutral"};
+if(v==="Bullish")return ret>0?{label:"RIGHT",cls:"ok"}:{label:"WRONG",cls:"bad"};
+if(v==="Bearish")return ret<0?{label:"RIGHT",cls:"ok"}:{label:"WRONG",cls:"bad"};
+return Math.abs(ret)<=5?{label:"RIGHT",cls:"ok"}:{label:"WRONG",cls:"bad"};}
+function renderRecord(){const calls=getCalls();
+show("recEmpty",calls.length===0);show("recTable",calls.length>0);
+const body=$("recBody");body.innerHTML="";
+let hits=0,checked=0;
+[...calls].reverse().forEach(c=>{const p=perf[c.id];const ret=p?p.ret:null;
+const hs=hitStatus(c.verdict,ret);if(ret!=null){checked++;if(hs.label==="RIGHT")hits++;}
+const tr=document.createElement("tr");
+tr.innerHTML='<td class="mono">'+c.date+'</td><td class="mono">'+esc(c.ticker)+'</td><td>'+esc(c.verdict)+
+' <span style="color:var(--muted)">('+c.confidence+'/10)</span></td><td class="mono">'+(c.price!=null?"$"+c.price:"—")+
+'</td><td class="mono">'+(p&&p.now!=null?"$"+p.now:"—")+'</td><td class="mono" style="color:'+(ret==null?"inherit":ret>=0?"var(--verify)":"var(--bear)")+'">'+
+(ret==null?"—":(ret>=0?"+":"")+ret.toFixed(1)+"%")+'</td><td><span class="status '+hs.cls+'">'+hs.label+"</span></td>";
+body.appendChild(tr);});
+const hr=$("hitRate");
+if(checked>0){hr.textContent=hits+"/"+checked+" calls right";hr.classList.remove("hidden");}
+else hr.classList.add("hidden");}
+async function recheck(){const calls=getCalls();if(!calls.length)return;
+$("recheckBtn").disabled=true;$("recheckBtn").textContent="CHECKING…";
+try{
+const tickers=[...new Set(calls.map(c=>c.ticker))].join(",");
+const r=await fetch("/api/prices?tickers="+encodeURIComponent(tickers));
+const j=await r.json();if(!r.ok)throw new Error(j.error||"failed");
+perf={};
+for(const c of calls){const now=typeof j[c.ticker]==="number"?j[c.ticker]:null;
+perf[c.id]={now,ret:now!=null&&c.price!=null?((now-c.price)/c.price)*100:null};}
+renderRecord();
+}catch(e){}finally{$("recheckBtn").disabled=false;$("recheckBtn").textContent="RE-CHECK PERFORMANCE";}}
+function clearCalls(){setCalls([]);perf={};renderRecord();}
+
+/* ── one-pager ── */
+function downloadReport(){if(!cur)return;
+const plain=id=>$(id).textContent;
+const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+esc(cur.ticker)+' — Crosscheck one-pager</title>'+
+'<style>body{font-family:Georgia,serif;max-width:720px;margin:36px auto;padding:0 20px;color:#13241F;line-height:1.55}h1,h2,.v{font-family:Arial,sans-serif}h2{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:#5D6E68;margin-top:26px}.v{font-size:24px;font-weight:bold}.small{font-size:12px;color:#5D6E68}</style></head><body>'+
+'<h1>CROSSCHECK ✓ · '+esc(cur.ticker)+'</h1>'+
+'<p class="small">'+esc(cur.data.company)+' · generated '+new Date().toLocaleDateString()+' · price '+(cur.data.priceUSD!=null?"$"+cur.data.priceUSD:"n/a")+'</p>'+
+'<p class="v">Verdict: '+esc(cur.analysis.verdict)+' — confidence '+cur.adjusted+'/10'+(cur.flagged?' (reduced from '+cur.stated+' after '+cur.flagged+' unverified figure(s))':'')+'</p>'+
+'<h2>Bull case</h2><p>'+esc(plain("bull"))+'</p>'+
+'<h2>Bear case</h2><p>'+esc(plain("bear"))+'</p>'+
+'<h2>Key catalyst</h2><p>'+esc(plain("cat"))+'</p>'+
+'<h2>What would change this view</h2><p>'+esc(plain("inv"))+'</p>'+
+'<h2>Method</h2><p class="small">Live data pulled from public web sources; AI analysis constrained to that data; every figure programmatically reconciled before display (3% rounding tolerance). Unverified figures reduce the confidence score. Not investment advice.</p></body></html>';
+const blob=new Blob([html],{type:"text/html"});const url=URL.createObjectURL(blob);
+const a=document.createElement("a");a.href=url;a.download=cur.ticker+"-crosscheck.html";
+document.body.appendChild(a);a.click();document.body.removeChild(a);
+setTimeout(()=>URL.revokeObjectURL(url),4000);}
+
+function toggleMethod(){$("method").classList.toggle("hidden");}
+
+/* ── wire up ── */
+const tfsEl=$("tfs");
+TFKEYS.forEach(k=>{const b=document.createElement("button");
+b.className="tf"+(k===curTf?" on":"");b.textContent=k;
+b.onclick=()=>{if(cur)loadChart(k);};tfsEl.appendChild(b);});
+$("go").onclick=run;
+$("ticker").addEventListener("keydown",e=>{if(e.key==="Enter"&&!$("go").disabled)run();});
+renderRecord();
+</script>
+</body>
+</html>
