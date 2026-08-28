@@ -33,19 +33,35 @@ async function callClaude(prompt) {
 }
 
 function extractCandles(text) {
-  try {
-    const cleaned = text.replace(/```json|```/g, "");
-    const s = cleaned.indexOf("{"), e = cleaned.lastIndexOf("}");
-    if (s !== -1 && e !== -1) {
-      const j = JSON.parse(cleaned.slice(s, e + 1));
-      if (Array.isArray(j.candles) && j.candles.length) return j;
+  const cleaned = text.replace(/```json|```/g, "");
+  const start = cleaned.indexOf("{");
+  if (start !== -1) {
+    let depth = 0, inStr = false, esc = false;
+    for (let i = start; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (esc) { esc = false; continue; }
+      if (ch === "\\") { esc = true; continue; }
+      if (ch === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) {
+          try {
+            const j = JSON.parse(cleaned.slice(start, i + 1));
+            if (Array.isArray(j.candles) && j.candles.length) return j;
+          } catch (e) {}
+          break;
+        }
+      }
     }
-  } catch (e) {}
+  }
+  // Salvage: recover complete candle objects even if the outer JSON was truncated/messy
   const objs = text.match(/\{[^{}]*"t"\s*:[^{}]*\}/g) || [];
   const candles = [];
   for (const o of objs) { try { const c = JSON.parse(o); if (c && c.t != null) candles.push(c); } catch (e) {} }
-  if (!candles.length) throw new Error("No usable price history returned");
-  return { candles, asOf: "", approx: true, note: "Response was truncated; series partially recovered." };
+  if (!candles.length) throw new Error("No usable price history returned. This ticker may have too little public price history for search to reconstruct.");
+  return { candles, asOf: "", approx: true, note: "Response was partially recovered from a messy model reply." };
 }
 
 const chartPrompt = (t, spec) => `Search the web for the historical share price of stock ticker "${t}" covering ${spec}.
